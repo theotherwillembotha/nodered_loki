@@ -1,0 +1,411 @@
+
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name", {value:"Loki Query", required:true})
+        .addDefault("lokiservice", {type:"LokiServiceConfigNode", required:true})
+        .addDefault("query", {value:`{app="nodered"}`, required:true})
+        .addDefault("start", {value:"1h", required:true})
+        .addDefault("start_type", {value:"relative", required:false})
+        .addDefault("end", {value:"", required:false})
+        .addDefault("end_type", {value:"now", required:false})
+        .addDefault("outputpath", {value:"payload", required:false})
+        .addDefault("batchMode", {required:false})
+        .setPaletteLabel("Loki Query")
+        .setLabelStyle("node_label_white")
+        .setIcon("loki.png")
+        .setColor("#8D7974")
+        .setLabel(function() {return this.name })
+        .setInput("input")
+        .addOutputs("logLines")
+
+
+</script>
+
+<div template-section="onIncludeOnce">
+<script type="text/javascript">
+
+window.PluginCore = window.PluginCore || {};
+
+/**
+ * PluginCore.createLogQLEditor(elementId, initialValue)
+ *
+ * Creates a Monaco editor pre-configured with the LogQL language:
+ * syntax highlighting for stream selectors, pipeline stages, metric
+ * functions, and aggregation operators; plus snippet completions.
+ *
+ * The LogQL language is registered with Monaco lazily on first call.
+ *
+ * @param {string} elementId    - DOM id of the container element.
+ * @param {string} initialValue - Starting content of the editor.
+ * @returns \{{ getValue(): string, dispose(): void \}}
+ */
+PluginCore.createLogQLEditor = function(elementId, initialValue) {
+
+    // Register the LogQL language with Monaco once per session.
+    if (!PluginCore._logqlReady) {
+        PluginCore._logqlReady = true;
+
+        monaco.languages.register({ id: 'logql' });
+
+        monaco.languages.setLanguageConfiguration('logql', {
+            brackets: [['{', '}'], ['[', ']'], ['(', ')']],
+            autoClosingPairs: [
+                { open: '{', close: '}' },
+                { open: '[', close: ']' },
+                { open: '(', close: ')' },
+                { open: '"', close: '"' },
+                { open: "'", close: "'" },
+                { open: '`', close: '`' }
+            ],
+            surroundingPairs: [
+                { open: '{', close: '}' },
+                { open: '[', close: ']' },
+                { open: '(', close: ')' },
+                { open: '"', close: '"' },
+                { open: "'", close: "'" }
+            ]
+        });
+
+        monaco.languages.setMonarchTokensProvider('logql', {
+            defaultToken: '',
+            tokenPostfix: '.logql',
+
+            keywords:       ['by', 'without', 'on', 'ignoring', 'group_left', 'group_right', 'bool', 'or', 'and', 'unless', 'offset'],
+            metricFns:      ['rate', 'count_over_time', 'bytes_rate', 'bytes_over_time', 'absent_over_time',
+                             'sum_over_time', 'avg_over_time', 'min_over_time', 'max_over_time',
+                             'first_over_time', 'last_over_time', 'stddev_over_time', 'stdvar_over_time',
+                             'quantile_over_time', 'label_replace', 'vector', 'sort', 'sort_desc'],
+            aggregations:   ['sum', 'avg', 'min', 'max', 'count', 'stddev', 'stdvar', 'bottomk', 'topk'],
+            pipelineStages: ['json', 'logfmt', 'pattern', 'regexp', 'unpack', 'line_format',
+                             'label_format', 'drop', 'keep', 'decolorize', 'unwrap', 'ip',
+                             'duration', 'bytes', 'distinct'],
+
+            tokenizer: {
+                root: [
+                    // Stream selector open brace
+                    [/\{/, { token: 'delimiter.curly', bracket: '@open', next: '@streamSelector' }],
+                    // Range vector e.g. [5m]
+                    [/\[\d+(ms|s|m|h|d|w|y)\]/, 'number.duration'],
+                    // Pipeline filter operators
+                    [/[|!][=~]/, 'operator.filter'],
+                    // Pipe
+                    [/\|/, 'operator.pipe'],
+                    // Comparison operators
+                    [/[><=!]+/, 'operator'],
+                    // Numbers
+                    [/\d+(\.\d+)?/, 'number'],
+                    // Identifiers -> map to keyword/function/aggregation/pipeline categories
+                    [/[a-zA-Z_]\w*/, {
+                        cases: {
+                            '@keywords':       'keyword',
+                            '@aggregations':   'type.aggregate',
+                            '@metricFns':      'type.function',
+                            '@pipelineStages': 'type.pipeline',
+                            '@default':        'identifier'
+                        }
+                    }],
+                    // String literals
+                    [/"/, { token: 'string.quote', bracket: '@open', next: '@dblString' }],
+                    [/'/, { token: 'string.quote', bracket: '@open', next: '@sglString' }],
+                    [/`/, { token: 'string.quote', bracket: '@open', next: '@rawString' }]
+                ],
+
+                streamSelector: [
+                    [/\}/, { token: 'delimiter.curly', bracket: '@close', next: '@pop' }],
+                    [/[a-zA-Z_]\w*/, 'attribute.name'],
+                    [/=~|!=|=|!~/, 'operator'],
+                    [/"/, { token: 'string.quote', bracket: '@open', next: '@dblString' }],
+                    [/'/, { token: 'string.quote', bracket: '@open', next: '@sglString' }],
+                    [/`/, { token: 'string.quote', bracket: '@open', next: '@rawString' }],
+                    [/,/, 'delimiter']
+                ],
+
+                dblString: [
+                    [/[^"\\]+/, 'string'],
+                    [/\\./, 'string.escape'],
+                    [/"/, { token: 'string.quote', bracket: '@close', next: '@pop' }]
+                ],
+                sglString: [
+                    [/[^'\\]+/, 'string'],
+                    [/\\./, 'string.escape'],
+                    [/'/, { token: 'string.quote', bracket: '@close', next: '@pop' }]
+                ],
+                rawString: [
+                    [/[^`]+/, 'string'],
+                    [/`/, { token: 'string.quote', bracket: '@close', next: '@pop' }]
+                ]
+            }
+        });
+
+        monaco.languages.registerCompletionItemProvider('logql', {
+            triggerCharacters: ['{', '|', ' ', '('],
+            provideCompletionItems: function(model, position) {
+                var word  = model.getWordUntilPosition(position);
+                var range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber:   position.lineNumber,
+                    startColumn:     word.startColumn,
+                    endColumn:       word.endColumn
+                };
+
+                var mk = monaco.languages.CompletionItemKind;
+                var SR = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
+                var suggestions = [];
+
+                // Stream selector template
+                suggestions.push({
+                    label: '{label="value"}',
+                    kind: mk.Snippet,
+                    detail: 'Log stream selector',
+                    documentation: 'Select log streams matching a set of label matchers.',
+                    insertText: '{${1:app}="${2:nodered}"}',
+                    insertTextRules: SR,
+                    range: range
+                });
+
+                // Metric query functions
+                [
+                    { l: 'rate',             d: 'Per-second rate of log entries',           s: 'rate({${1:app}="${2}"} [${3:5m}])' },
+                    { l: 'count_over_time',  d: 'Count of log entries over time range',     s: 'count_over_time({${1:app}="${2}"} [${3:5m}])' },
+                    { l: 'bytes_rate',       d: 'Per-second byte rate of log entries',      s: 'bytes_rate({${1:app}="${2}"} [${3:5m}])' },
+                    { l: 'bytes_over_time',  d: 'Total bytes of log entries over range',    s: 'bytes_over_time({${1:app}="${2}"} [${3:5m}])' },
+                    { l: 'absent_over_time', d: 'Returns 1 if no entries found in range',   s: 'absent_over_time({${1:app}="${2}"} [${3:5m}])' },
+                    { l: 'sum_over_time',    d: 'Sum of unwrapped values over range',       s: 'sum_over_time({${1:app}="${2}"} | unwrap ${3:field} [${4:5m}])' },
+                    { l: 'avg_over_time',    d: 'Average of unwrapped values over range',   s: 'avg_over_time({${1:app}="${2}"} | unwrap ${3:field} [${4:5m}])' },
+                    { l: 'min_over_time',    d: 'Minimum of unwrapped values over range',   s: 'min_over_time({${1:app}="${2}"} | unwrap ${3:field} [${4:5m}])' },
+                    { l: 'max_over_time',    d: 'Maximum of unwrapped values over range',   s: 'max_over_time({${1:app}="${2}"} | unwrap ${3:field} [${4:5m}])' },
+                    { l: 'quantile_over_time', d: 'Quantile of unwrapped values',           s: 'quantile_over_time(${1:0.99}, {${2:app}="${3}"} | unwrap ${4:field} [${5:5m}])' },
+                    { l: 'first_over_time',  d: 'First unwrapped value over range',         s: 'first_over_time({${1:app}="${2}"} | unwrap ${3:field} [${4:5m}])' },
+                    { l: 'last_over_time',   d: 'Last unwrapped value over range',          s: 'last_over_time({${1:app}="${2}"} | unwrap ${3:field} [${4:5m}])' },
+                    { l: 'label_replace',    d: 'Replace label value using regex',          s: 'label_replace(${1:expr}, "${2:dst_label}", "${3:$1}", "${4:src_label}", "${5:(.*)}")' }
+                ].forEach(function(f) {
+                    suggestions.push({ label: f.l, kind: mk.Function, detail: f.d, insertText: f.s, insertTextRules: SR, range: range });
+                });
+
+                // Aggregation operators
+                [
+                    { l: 'sum',     d: 'Sum over dimensions' },
+                    { l: 'avg',     d: 'Average over dimensions' },
+                    { l: 'min',     d: 'Minimum over dimensions' },
+                    { l: 'max',     d: 'Maximum over dimensions' },
+                    { l: 'count',   d: 'Count over dimensions' },
+                    { l: 'stddev',  d: 'Standard deviation' },
+                    { l: 'stdvar',  d: 'Standard variance' },
+                    { l: 'bottomk', d: 'Smallest k elements', s: 'bottomk(${1:5}, ${2:expr})' },
+                    { l: 'topk',    d: 'Largest k elements',  s: 'topk(${1:5}, ${2:expr})' }
+                ].forEach(function(a) {
+                    var snippet = a.s || (a.l + '(${1:by (${2:label})}) (${3:expr})');
+                    suggestions.push({ label: a.l, kind: mk.Keyword, detail: a.d, insertText: snippet, insertTextRules: SR, range: range });
+                });
+
+                // Pipeline stages
+                [
+                    { l: '|= "..."',            s: '|= "${1}"',                              d: 'Filter: line contains string' },
+                    { l: '!= "..."',            s: '!= "${1}"',                             d: 'Filter: line does not contain string' },
+                    { l: '|~ "..."',            s: '|~ "${1}"',                             d: 'Filter: line matches regex' },
+                    { l: '!~ "..."',            s: '!~ "${1}"',                             d: 'Filter: line does not match regex' },
+                    { l: '| json',              s: '| json',                                d: 'Parse JSON log line' },
+                    { l: '| logfmt',            s: '| logfmt',                              d: 'Parse logfmt log line' },
+                    { l: '| pattern "..."',     s: '| pattern "${1:<_> level=<level> <_>}"', d: 'Parse using pattern' },
+                    { l: '| regexp "..."',      s: '| regexp "${1:(?P<level>[a-z]+)}"',      d: 'Parse using named regex groups' },
+                    { l: '| line_format "..."', s: '| line_format "${1:\{{.level\}} \{{.msg\}}}"', d: 'Reformat the log line' },
+                    { l: '| label_format',      s: '| label_format ${1:new_label}=${2:old_label}', d: 'Rename or transform labels' },
+                    { l: '| unwrap',            s: '| unwrap ${1:label}',                   d: 'Extract numeric value for metric queries' },
+                    { l: '| unpack',            s: '| unpack',                              d: 'Unpack JSON log fields into labels' },
+                    { l: '| drop',              s: '| drop ${1:label}',                     d: 'Drop specified labels' },
+                    { l: '| keep',              s: '| keep ${1:label}',                     d: 'Keep only specified labels' },
+                    { l: '| decolorize',        s: '| decolorize',                          d: 'Strip ANSI colour codes' }
+                ].forEach(function(p) {
+                    suggestions.push({ label: p.l, kind: mk.Operator, detail: p.d, insertText: p.s, insertTextRules: SR, range: range });
+                });
+
+                // Keywords
+                ['by', 'without', 'on', 'or', 'and', 'unless', 'bool', 'offset', 'ignoring'].forEach(function(kw) {
+                    suggestions.push({ label: kw, kind: mk.Keyword, insertText: kw, range: range });
+                });
+
+                return { suggestions: suggestions };
+            }
+        });
+    }
+
+    var editor = monaco.editor.create(document.getElementById(elementId), {
+        value:               initialValue || '',
+        language:            'logql',
+        automaticLayout:     true,
+        minimap:             { enabled: false },
+        lineNumbers:         'off',
+        wordWrap:            'on',
+        scrollBeyondLastLine: false,
+        fontSize:            13,
+        overviewRulerLanes:  0,
+        folding:             false,
+        padding:             { top: 6, bottom: 6 }
+    });
+
+    return {
+        getValue: function()  { return editor.getValue(); },
+        dispose:  function()  { editor.dispose(); }
+    };
+};
+
+</script>
+</div>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+{
+    let durationRegex = /^\d+(ms|s|m|h|d|w)$/i;
+    let timeTypes = [
+        {
+            value: "relative",
+            label: "Relative",
+            icon: "fa fa-clock-o",
+            validate: function(v) { return durationRegex.test(v); },
+            hasValue: true
+        },
+        {
+            value: "absolute",
+            label: "Date/Time",
+            icon: "fa fa-calendar",
+            validate: function(v) { return !isNaN(Date.parse(v)); },
+            hasValue: true
+        }
+    ];
+
+    $("#node-input-start").typedInput({
+        types: timeTypes,
+        default: "relative",
+        typeField: "#node-input-start_type"
+    });
+
+    $("#node-input-end").typedInput({
+        types: [
+            {
+                value: "now",
+                label: "Now",
+                icon: "fa fa-circle",
+                hasValue: false
+            }
+        ].concat(timeTypes),
+        default: "now",
+        typeField: "#node-input-end_type"
+    });
+
+    $("#node-input-outputpath").typedInput({ types: ["msg"] });
+
+    $("#node-input-batchMode").prop("checked", this.batchMode === true);
+
+    this.queryEditor = PluginCore.createLogQLEditor("node-input-query-editor", this.query || "");
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+{
+    this.query     = this.queryEditor.getValue();
+    this.batchMode = $("#node-input-batchMode").is(":checked");
+    this.queryEditor.dispose();
+    delete this.queryEditor;
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditCancel">
+{
+    if (this.queryEditor) {
+        this.queryEditor.dispose();
+        delete this.queryEditor;
+    }
+}
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-lokiservice"><i class="fa fa-server"></i> Loki Service</label>
+        <input type="text" id="node-input-lokiservice" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-query-editor"><i class="fa fa-search"></i> Query</label>
+        <div id="node-input-query-editor" style="height:120px; min-height:80px; border:1px solid #ccc; border-radius:3px;"></div>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-start"><i class="fa fa-clock-o"></i> Start</label>
+        <input type="text" id="node-input-start" />
+        <input type="hidden" id="node-input-start_type" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-end"><i class="fa fa-clock-o"></i> End</label>
+        <input type="text" id="node-input-end" />
+        <input type="hidden" id="node-input-end_type" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-outputpath"><i class="fa fa-arrow-right"></i> Output Path</label>
+        <input type="text" id="node-input-outputpath" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-batchMode"><i class="fa fa-list"></i> Batch Mode</label>
+        <input type="checkbox" id="node-input-batchMode" style="width:auto; margin-top:4px;" />
+        <span style="margin-left:6px; color:#888; font-size:0.9em;">Collect all results into a single array message</span>
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Runs a LogQL query against a Grafana Loki instance and emits log lines as messages.
+
+### Properties
+
+: *name*         (string) : Display label for this node.
+: *loki service* (config) : The Loki Service config node that provides the connection URL and credentials.
+: *query*        (LogQL)  : The LogQL query to execute. A Monaco editor with LogQL syntax highlighting and completions is provided.
+: *start*        (time)   : Start of the query time range. Required. Accepts relative durations or absolute date/times.
+: *end*          (time)   : End of the query time range. Defaults to **Now**.
+: *output path*  (msg)    : Where in the output message to place each log line object. Defaults to `msg.payload`.
+: *batch mode*   (bool)   : When enabled, all results are collected into a single array message. When disabled (default), one message is emitted per log line.
+
+### Time formats
+
+The *start* and *end* fields accept:
+
+- **Relative** - `1h`, `30m`, `7d`, `2w` (subtracted from now at query time)
+- **Date/Time** - `2024-01-01T00:00:00Z` or any parseable date string
+
+### Query editor
+
+The query editor provides:
+- Syntax highlighting for stream selectors `\{app="nodered"\}`, pipeline stages, metric functions, and aggregation operators.
+- Snippet completions for all major LogQL constructs (trigger with `Ctrl+Space`).
+
+### Inputs
+
+: *msg*         : Any message. Used as a trigger.
+: *msg.query*   : *(optional)* Overrides the configured LogQL query.
+: *msg.start*   : *(optional)* Overrides the configured start time (parsed as relative or date string).
+: *msg.end*     : *(optional)* Overrides the configured end time.
+
+### Outputs
+
+**Individual mode** (default): one message per log line - a copy of the input message with the output path set to:
+
+```json
+\{
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "line": "the log message text",
+  "labels": \{ "app": "nodered", "level": "error" \}
+\}
+```
+
+**Batch mode**: a single message with the output path set to an array of the above objects.
+
+### Notes
+
+- Results are capped at **1 000 log lines** or **10 MB** of response data, whichever is reached first.
+- Lines are emitted in the order returned by Loki (oldest first within each stream).
+</script>

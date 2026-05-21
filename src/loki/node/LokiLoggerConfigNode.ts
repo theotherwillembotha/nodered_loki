@@ -1,18 +1,15 @@
 
 import { Node } from "node-red";
-import { AbstractLogger, Log, BaseLoggerConfig, LoggerService, LoggerTemplateConfig, NodeDescription, LoggerConfigNode, LoggerConfigNodeConfig, Level } from "@theotherwillembotha/node-red-plugincore"
+import { AbstractLogger, Log, BaseLoggerConfig, LoggerService, LoggerTemplateConfig, NodeDescription, LoggerConfigNode, LoggerConfigNodeConfig, Level, NodeManager } from "@theotherwillembotha/node-red-plugincore"
 import { SourceUtility } from "@theotherwillembotha/node-red-plugincore";
 import { createLogger, format, Logger } from "winston";
 import LokiTransport from "winston-loki";
+import { LokiServiceConfigNode } from "./LokiServiceConfigNode";
 
 interface LokiLoggerConfigNodeConfig extends LoggerConfigNodeConfig {
     level: Level;
     template: string;
-
-    loki_host: string;
-    loki_userid?: string;
-    loki_authtoken?: string;
-    loki_tenantid?: string;
+    lokiservice: string;
 }
 
 @NodeDescription({
@@ -21,7 +18,7 @@ interface LokiLoggerConfigNodeConfig extends LoggerConfigNodeConfig {
     group: "config",
     sourceFile: SourceUtility.getSourcePath("/build/", "/src/") + "LokiLoggerConfigNode.html",
     package: "@theotherwillembotha/node-red-loki",
-    dependencies: [LoggerService],
+    dependencies: [LoggerService, LokiServiceConfigNode],
     tags: ["LoggerType"]
 })
 export class LokiLoggerConfigNode extends LoggerConfigNode<LokiLoggerConfigNodeConfig, LokiLogger> {
@@ -31,15 +28,16 @@ export class LokiLoggerConfigNode extends LoggerConfigNode<LokiLoggerConfigNodeC
     constructor(node: Node, config: LokiLoggerConfigNodeConfig) {
         super(node, config);
 
+        const serviceNode = (NodeManager.RED.nodes.getNode(config.lokiservice) as any).node() as LokiServiceConfigNode;
+
         const loggerConfig: any = {
             id: this.id(),
             type: "LOKI",
             template: config.template,
             level: config.level,
-            host: config.loki_host,
-            userid: config.loki_userid,
-            authtoken: config.loki_authtoken,
-            tenantid: config.loki_tenantid,
+            host: serviceNode.url(),
+            basicAuth: serviceNode.basicAuth(),
+            tenantid: serviceNode.tenantId(),
         };
 
         this._logger = new LokiLogger(loggerConfig);
@@ -53,8 +51,7 @@ export class LokiLoggerConfigNode extends LoggerConfigNode<LokiLoggerConfigNodeC
 
 export interface LokiLoggerConfig extends BaseLoggerConfig {
     host: string;
-    userid?: string;
-    authtoken?: string;
+    basicAuth?: string;
     tenantid?: string;
 }
 
@@ -81,9 +78,7 @@ class LokiLogger extends AbstractLogger<LokiLoggerConfig> {
             format: format.json(),
             replaceTimestamp: true,
             onConnectionError: (err: unknown) => console.error(`[LokiLogger] connection error (host: ${config.host}):`, err),
-            basicAuth: (config.userid && config.authtoken)
-                ? `${config.userid}:${config.authtoken}`
-                : undefined
+            basicAuth: config.basicAuth,
         };
         if(config.tenantid){
             (transportConfig.headers as any)["X-Scope-OrgID"] = config.tenantid;

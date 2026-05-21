@@ -4,11 +4,7 @@
         .addDefault("name", {value:"Logger Example", required:true})
         .addDefault("template", {value:`message:{{msg}}`, required:true})
         .addDefault("level", {value:"info", required:true})
-
-        .addDefault("loki_host", {})
-        .addDefault("loki_tenantid", {})
-        .addDefault("loki_userid", {})
-        .addDefault("loki_authtoken", {})
+        .addDefault("lokiservice", {type:"LokiServiceConfigNode", required:true})
 
         .setPaletteLabel("Loki Logger Config Node")
         .setLabel(function() {return this.name })
@@ -61,20 +57,8 @@
     </div>
 
     <div class="form-row">
-        <label class="towb_editorlabel" for="node-config-input-loki_host"><i class="fa fa-server"></i> Host</label>
-        <input class="required" type="text" id="node-config-input-loki_host" />
-    </div>
-    <div class="form-row">
-        <label class="towb_editorlabel" for="node-config-input-loki_tenantid"><i class="fa fa-building-o"></i> Tenant ID</label>
-        <input class="" type="text" id="node-config-input-loki_tenantid" />
-    </div>
-    <div class="form-row">
-        <label class="towb_editorlabel" for="node-config-input-loki_userid"><i class="fa fa-user"></i> Username</label>
-        <input class="" type="text" id="node-config-input-loki_userid" />
-    </div>
-    <div class="form-row">
-        <label class="towb_editorlabel" for="node-config-input-loki_authtoken"><i class="fa fa-key"></i> Auth Token</label>
-        <input class="" type="password" id="node-config-input-loki_authtoken" />
+        <label class="towb_editorlabel" for="node-config-input-lokiservice"><i class="fa fa-server"></i> Loki Service</label>
+        <input type="text" id="node-config-input-lokiservice" />
     </div>
 
     <div class="form-row">
@@ -88,13 +72,10 @@
 Pushes log messages to a Grafana Loki instance using the Loki HTTP API.
 
 ### Properties
-: *name*        (string)    : A descriptive name for this logger configuration.
-: *level*       (level)     : The minimum log level. Messages below this threshold are suppressed. Options: DEBUG, INFO, WARNING, ERROR.
-: *host*        (string)    : The base URL of the Loki instance, including port (e.g. `http://localhost:3100`).
-: *tenant ID*   (string)    : The tenant identifier for multi-tenant Loki deployments (`X-Scope-OrgID` header). Leave blank for single-tenant deployments.
-: *username*    (string)    : Username for Loki authentication.
-: *auth token*  (string)    : Authentication token or password for Loki.
-: *template*    (mustache)  : A Mustache/Handlebars template that formats the log message body.
+: *name*         (string) : A descriptive name for this logger configuration.
+: *loki service* (config) : The Loki Service config node that provides the connection URL and credentials.
+: *level*        (level)  : The minimum log level. Messages below this threshold are suppressed. Options: DEBUG, INFO, WARNING, ERROR.
+: *template*     (mustache) : A Mustache/Handlebars template that formats the log message body.
 
 ### Mustache Templating
 Mustache/Handlebars templates build the message string pushed to Loki.
@@ -107,10 +88,10 @@ Mustache/Handlebars templates build the message string pushed to Loki.
 : *json*        (helper)    : Serialises an object to a JSON string using `JSON.stringify`.
 
 #### Examples
-- `{{{json msg}}}` — serialises the full message object as JSON.
+- `{{{json msg}}}` - serialises the full message object as JSON.
 
 #### References
-- [Grafana Loki — HTTP API](https://grafana.com/docs/loki/latest/reference/loki-http-api/)
-- [Mustache — Wikipedia](https://en.wikipedia.org/wiki/Mustache_(template_system))
-- [Mustache — Playground](https://jgonggrijp.gitlab.io/wontache/playground.html)
+- [Grafana Loki - HTTP API](https://grafana.com/docs/loki/latest/reference/loki-http-api/)
+- [Mustache - Wikipedia](https://en.wikipedia.org/wiki/Mustache_(template_system))
+- [Mustache - Playground](https://jgonggrijp.gitlab.io/wontache/playground.html)
 </script>

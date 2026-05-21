@@ -1,7 +1,7 @@
 {
   "name": "@theotherwillembotha/node-red-loki",
-  "version": "0.0.55",
-  "description": "Grafana Loki logger config node for Node-RED. Built on @theotherwillembotha/node-red-plugincore.",
+  "version": "0.0.56",
+  "description": "Grafana Loki integration for Node-RED ( service config, logger, and LogQL query node). Built on @theotherwillembotha/node-red-plugincore.",
   "main": "./build/index.js",
   "exports": "./build/index.js",
   "author": "Willem Botha (@theotherwillembotha)",
@@ -15,12 +15,14 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npm run clean && tsc && npm run generate-nodes",
+    "build": "npm run clean && tsc && npm run generate-nodes && npm run copy-files",
     "clean": "rm -rf ./build",
-    "generate-nodes": "node build/GenerateNodes.js"
+    "generate-nodes": "node build/GenerateNodes.js",
+    "copy-files": "cp -r ./icons ./build/"
   },
   "files": [
     "build/",
+    "documentation/",
     "LICENSE",
     "README.md"
   ],
@@ -38,6 +40,7 @@
   },
   "dependencies": {
     "@theotherwillembotha/node-red-plugincore": "^0.0.55",
+    "axios": "^1.7.0",
     "winston": "^3.17.0",
     "winston-loki": "^6.1.3"
   },

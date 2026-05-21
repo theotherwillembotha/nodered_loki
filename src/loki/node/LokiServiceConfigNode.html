@@ -1,0 +1,99 @@
+
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name", {value:"Loki Service", required:true})
+        .addDefault("url", {value:"http://localhost:3100", required:true})
+        .addDefault("userid", {required:false})
+        .addDefault("authtoken", {required:false})
+        .addDefault("tenantid", {required:false})
+        .setPaletteLabel("Loki Service")
+        .setLabel(function() {return this.name })
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+{
+    $("#loki-service-test-btn").on("click", function() {
+        let $btn    = $(this);
+        let $status = $("#loki-service-test-status");
+
+        $btn.prop("disabled", true);
+        $status.text("Testing...").css("color", "gray");
+
+        $.ajax({
+            url: "lokiservice/testconnection",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({
+                url:       $("#node-config-input-url").val(),
+                userid:    $("#node-config-input-userid").val(),
+                authtoken: $("#node-config-input-authtoken").val(),
+                tenantid:  $("#node-config-input-tenantid").val(),
+            }),
+            success: function(response) {
+                if (response.success) {
+                    $status.text("\u2714 Connected").css("color", "green");
+                } else {
+                    let detail = response.error ? " \u2014 " + response.error : "";
+                    $status.text("\u2718 Failed" + detail).css("color", "red");
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                $status.text("\u2718 Failed \u2014 " + errorThrown).css("color", "red");
+            },
+            complete: function() {
+                $btn.prop("disabled", false);
+            }
+        });
+    });
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-url"><i class="fa fa-server"></i> URL</label>
+        <input type="text" id="node-config-input-url" placeholder="http://localhost:3100" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-tenantid"><i class="fa fa-building-o"></i> Tenant ID</label>
+        <input type="text" id="node-config-input-tenantid" placeholder="(optional)" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-userid"><i class="fa fa-user"></i> Username</label>
+        <input type="text" id="node-config-input-userid" placeholder="(optional)" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-authtoken"><i class="fa fa-key"></i> Auth Token</label>
+        <input type="password" id="node-config-input-authtoken" placeholder="(optional)" />
+    </div>
+
+    <div class="form-row" style="margin-top:12px;">
+        <label></label>
+        <button id="loki-service-test-btn" type="button" class="red-ui-button">
+            <i class="fa fa-plug"></i> Test Connection
+        </button>
+        <span id="loki-service-test-status" style="margin-left:10px; font-size:12px;"></span>
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Shared connection configuration for a Grafana Loki instance. Referenced by the Loki Logger and Loki Query nodes.
+
+### Properties
+
+: *name*       (string) : Display label for this config node.
+: *url*        (string) : Base URL of the Loki instance, including port (e.g. `http://localhost:3100`).
+: *tenant ID*  (string) : Tenant identifier for multi-tenant deployments (`X-Scope-OrgID` header). Leave blank for single-tenant setups.
+: *username*   (string) : Username for basic authentication. Leave blank if auth is not required.
+: *auth token* (string) : Password or token for basic authentication.
+</script>
