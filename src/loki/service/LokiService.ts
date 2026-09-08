@@ -1,8 +1,13 @@
 
 import axios from "axios";
 import { NodeAPI, NodeAPISettingsWithData } from "node-red";
-import { BaseService, FlowDeployment, ServiceDescriptor } from "@theotherwillembotha/node-red-plugincore";
+import { BaseService, FlowDeployment } from "@theotherwillembotha/node-red-plugincore";
+import { ServiceDescription } from "@theotherwillembotha/node-red-plugincore";
 
+@ServiceDescription({
+    id: "@theotherwillembotha/lokiservice",
+    sourceFile: "@theotherwillembotha/node-red-loki",
+})
 export class LokiService extends BaseService {
 
     private red!: NodeAPI<NodeAPISettingsWithData>;
@@ -41,14 +46,4 @@ export class LokiService extends BaseService {
 
     public async onDeploy(_flowDeployment: FlowDeployment): Promise<void> {}
 
-    static override getServiceDescriptor(): ServiceDescriptor {
-        return new ServiceDescriptor(
-            "@theotherwillembotha/lokiservice",
-            "LokiService",
-            "services-plugin",
-            "@theotherwillembotha/node-red-loki",
-            LokiService,
-            []
-        );
-    }
 }

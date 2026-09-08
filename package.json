@@ -1,6 +1,6 @@
 {
   "name": "@theotherwillembotha/node-red-loki",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Grafana Loki integration for Node-RED ( service config, logger, and LogQL query node). Built on @theotherwillembotha/node-red-plugincore.",
   "main": "./build/index.js",
   "exports": "./build/index.js",
@@ -15,7 +15,8 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npm run clean && tsc && npm run generate-nodes && npm run copy-files",
+    "build": "npm run clean && tsc && npm run generate-nodes && npm run bundle && npm run copy-files",
+    "bundle": "node esbuild.js",
     "clean": "rm -rf ./build",
     "generate-nodes": "node build/GenerateNodes.js",
     "copy-files": "cp -r ./icons ./build/"
@@ -39,7 +40,7 @@
     "nodered": ">=4.0.0"
   },
   "dependencies": {
-    "@theotherwillembotha/node-red-plugincore": "^0.1.0",
+    "@theotherwillembotha/node-red-plugincore": "^0.2.0",
     "axios": "^1.7.0",
     "winston": "^3.17.0",
     "winston-loki": "^6.1.3"
@@ -47,7 +48,8 @@
   "devDependencies": {
     "@theotherwillembotha/node-red-plugincore": "../nodered_plugincore",
     "@types/node": "^22.15.29",
-    "@types/node-red": "~1.3.5"
+    "@types/node-red": "~1.3.5",
+    "esbuild": "^0.25.0"
   },
   "publishConfig": {
     "access": "public"
