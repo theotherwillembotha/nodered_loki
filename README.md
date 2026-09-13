@@ -1,6 +1,6 @@
 # @theotherwillembotha/node-red-loki
 
-Grafana Loki integration for Node-RED. Built on [@theotherwillembotha/node-red-plugincore](https://github.com/theotherwillembotha/nodered_plugincore).
+Grafana Loki integration for Node-RED. Built on [@theotherwillembotha/node-red-plugincore](https://github.com/theotherwillembotha/nodered_plugincore) (bundled — no separate install required).
 
 Provides three nodes:
 - **Loki Service** - shared connection config (URL, auth, tenant ID)
@@ -16,15 +16,6 @@ Either use the **Manage Palette** option in the Node-RED editor, or run the foll
 ```bash
 npm install @theotherwillembotha/node-red-loki
 ```
-
-> [!IMPORTANT]
-> **This plugin requires [`@theotherwillembotha/node-red-plugincore`](https://github.com/theotherwillembotha/nodered_plugincore) to be installed.**
->
-> `node-red-plugincore` is declared as a dependency and npm will install it automatically. However, due to a [known Node-RED limitation](https://github.com/node-red/node-red/issues/3529), transitive npm dependencies are only discovered by the Node-RED runtime on the **next startup**.
->
-> **Two options:**
-> - Install [`@theotherwillembotha/node-red-plugincore`](https://flows.nodered.org/node/@theotherwillembotha/node-red-plugincore) via the palette manager or `npm install` **first**, then install this plugin.
-> - Install this plugin directly. `node-red-plugincore` installs alongside it. **Restart Node-RED once** and both packages will be fully loaded.
 
 ---
 

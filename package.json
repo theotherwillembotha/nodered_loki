@@ -1,9 +1,10 @@
 {
   "name": "@theotherwillembotha/node-red-loki",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Grafana Loki integration for Node-RED ( service config, logger, and LogQL query node). Built on @theotherwillembotha/node-red-plugincore.",
   "main": "./build/index.js",
   "exports": "./build/index.js",
+  "types": "./build/index.d.ts",
   "author": "Willem Botha (@theotherwillembotha)",
   "license": "ISC",
   "keywords": [
@@ -23,6 +24,7 @@
   },
   "files": [
     "build/",
+    "icons/",
     "documentation/",
     "LICENSE",
     "README.md"
@@ -40,7 +42,7 @@
     "nodered": ">=4.0.0"
   },
   "dependencies": {
-    "@theotherwillembotha/node-red-plugincore": "^0.2.0",
+    "@theotherwillembotha/node-red-plugincore": "^0.3.0",
     "axios": "^1.7.0",
     "winston": "^3.17.0",
     "winston-loki": "^6.1.3"
