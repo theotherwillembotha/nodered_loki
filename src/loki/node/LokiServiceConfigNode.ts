@@ -1,6 +1,7 @@
 
 import { Node } from "node-red";
 import { ConfigNode, ConfigNodeConfig, NodeDescription, SourceUtility } from "@theotherwillembotha/node-red-plugincore";
+import { LokiService } from "../service/LokiService";
 
 interface LokiServiceConfigNodeConfig extends ConfigNodeConfig {
     url: string;
@@ -15,6 +16,7 @@ interface LokiServiceConfigNodeConfig extends ConfigNodeConfig {
     group: "config",
     sourceFile: SourceUtility.getSourcePath("/build/", "/src/") + "LokiServiceConfigNode.html",
     package: "@theotherwillembotha/node-red-loki",
+    dependencies: [LokiService],
     tags: ["Loki"]
 })
 export class LokiServiceConfigNode extends ConfigNode<LokiServiceConfigNodeConfig> {

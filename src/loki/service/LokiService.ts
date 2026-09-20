@@ -6,7 +6,9 @@ import { ServiceDescription } from "@theotherwillembotha/node-red-plugincore";
 
 @ServiceDescription({
     id: "@theotherwillembotha/lokiservice",
-    sourceFile: "@theotherwillembotha/node-red-loki",
+    name: "LokiService",
+    type: "integration-plugin",
+    sourceFile: "./loki/service/LokiService",
 })
 export class LokiService extends BaseService {
 

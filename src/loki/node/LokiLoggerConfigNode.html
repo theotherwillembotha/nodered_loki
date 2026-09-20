@@ -41,7 +41,15 @@
     this.editor.destroy();
     delete this.editor;
 }
+</script>
 
+<script type="text/javascript" template-section="onIncludeEditCancel">
+{
+    if (this.editor) {
+        this.editor.destroy();
+        delete this.editor;
+    }
+}
 </script>
 
 <script type="text/html" template-section="onIncludeEditForm">
